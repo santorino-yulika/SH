@@ -26,7 +26,7 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("🏥 SuperHumans Surgery Notify — ДЕМО форма інформування про операцію")
+st.title("🏥 SuperHumans Surgery Notify  ДЕМО форма інформування про операцію")
 
 with st.form("operation_form"):
 
