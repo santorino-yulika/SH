@@ -1,111 +1,107 @@
 import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
-import smtplib
-from email.mime.text import MIMEText
 from datetime import datetime
 
-# ---------------------------
-# CONFIGURATION
-# ---------------------------
+# ===========================
+# DEMO MODE (явно увімкнено)
+# ===========================
+DEMO_MODE = True
 
-SHEET_NAME = "hospital_operations"
+# ===========================
+# DEMO EMAIL (MOCK)
+# ===========================
+def send_email_demo(subject: str, body: str, recipients: list[str]):
+    st.info("📧 DEMO: Імітація відправки email")
+    st.json({
+        "subject": subject,
+        "recipients": recipients,
+        "body": body
+    })
 
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
+# ===========================
+# STREAMLIT APP
+# ===========================
 
-creds = Credentials.from_service_account_file(
-    "service_account.json",
-    scopes=SCOPES
+st.set_page_config(
+    page_title="NotifyOR (DEMO)",
+    layout="centered"
 )
-client = gspread.authorize(creds)
-sheet = client.open(SHEET_NAME).sheet1
 
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-EMAIL_USER = "your-email@gmail.com"
-EMAIL_PASSWORD = "your-app-password"
-
-DEPARTMENTS_EMAILS = {
-    "Операційний блок": "operblock@clinic.ua",
-    "Анестезіологія": "anesth@clinic.ua",
-    "Реанімація": "icu@clinic.ua",
-    "Лабораторія": "lab@clinic.ua",
-    "Стерилізаційна": "sterile@clinic.ua",
-    "Адміністрація": "admin@clinic.ua",
-    "Трансфузіологія": "bloodbank@clinic.ua",
-}
-
-def send_email(subject, body, recipients):
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["From"] = EMAIL_USER
-    msg["To"] = ", ".join(recipients)
-
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login(EMAIL_USER, EMAIL_PASSWORD)
-        server.sendmail(EMAIL_USER, recipients, msg.as_string())
-
-st.set_page_config(page_title="Форма інформування про операцію", layout="centered")
-st.title("🏥 Форма інформування про операцію (ампутанти)")
+st.title("🏥 NotifyOR — ДЕМО форма інформування про операцію")
 
 with st.form("operation_form"):
 
+    # ---------- Блок A: Операція ----------
     st.subheader("🔹 Основні дані операції")
+
     op_date = st.date_input("Дата операції")
     op_time = st.time_input("Час операції")
     op_type = st.selectbox("Тип операції", ["Планова", "Ургентна"])
+
     amputation_stage = st.selectbox(
         "Стадія ампутації",
         ["Первинна", "Ревізійна", "Реампутація"]
     )
+
     amputation_level = st.selectbox(
         "Рівень ампутації",
         ["Стегно", "Гомілка", "Плече", "Передпліччя"]
     )
+
     department = st.selectbox("Відділення", ["Хірургія", "Ортопедія"])
     operating_room = st.selectbox("Операційна", ["№1", "№2", "№3"])
+
     surgeon = st.text_input("Хірург (ПІБ)")
     anesthesiologist = st.text_input("Анестезіолог (ПІБ)")
 
+    # ---------- Блок B: Пацієнт ----------
     st.subheader("🔹 Пацієнт")
+
     patient_name = st.text_input("ПІБ пацієнта")
     patient_dob = st.date_input("Дата народження")
     case_number = st.text_input("Номер історії хвороби")
     diagnosis = st.text_area("Основний діагноз")
+
     comorbidities = st.multiselect(
         "Супутні захворювання",
         ["Діабет", "Анемія", "ІХС", "Коагулопатія"]
     )
 
+    # ---------- Блок C: Трансфузіологія ----------
     st.subheader("🔹 Трансфузіологічний блок")
+
     blood_loss = st.selectbox(
         "Очікувана крововтрата",
         ["< 500 мл", "500–1000 мл", "> 1000 мл"]
     )
+
     blood_needed = st.radio("Потреба в крові", ["Так", "Можливо", "Ні"])
+
     blood_components = st.multiselect(
         "Необхідні компоненти",
         ["Еритроцити", "Плазма", "Тромбоцити"]
     )
+
     blood_group = st.text_input("Група крові (якщо відома)")
+
     urgency = st.selectbox(
         "Терміновість",
         ["Планово", "Терміново", "Негайно"]
     )
 
+    # ---------- Блок D: Інші ресурси ----------
     st.subheader("🔹 Інші ресурси")
+
     equipment = st.multiselect(
         "Потрібне обладнання",
         ["Апаратура ШВЛ", "Моніторинг", "Рентген", "УЗД"]
     )
+
     icu_needed = st.checkbox("Потрібна реанімація")
     special_conditions = st.text_area("Особливі умови")
 
-    st.subheader("🔹 Додаткові адресати")
+    # ---------- Блок E: Додаткові адресати ----------
+    st.subheader("🔹 Додаткові адресати (ручний вибір)")
+
     notify_operblock = st.checkbox("Операційний блок")
     notify_anesth = st.checkbox("Анестезіологія")
     notify_icu = st.checkbox("Реанімація")
@@ -116,70 +112,84 @@ with st.form("operation_form"):
 
     submitted = st.form_submit_button("📩 Надіслати")
 
+# ===========================
+# ОБРОБКА ПОДІЇ SUBMIT
+# ===========================
+
 if submitted:
+
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    row = [
-        timestamp,
-        op_date.isoformat(),
-        op_time.strftime("%H:%M"),
-        op_type,
-        amputation_stage,
-        amputation_level,
-        department,
-        operating_room,
-        surgeon,
-        anesthesiologist,
-        patient_name,
-        patient_dob.isoformat(),
-        case_number,
-        diagnosis,
-        ", ".join(comorbidities),
-        blood_loss,
-        blood_needed,
-        ", ".join(blood_components),
-        blood_group,
-        urgency,
-        ", ".join(equipment),
-        "Так" if icu_needed else "Ні",
-        special_conditions,
-    ]
+    # === 1) Формуємо "рядок таблиці" (як у майбутньому для Google Sheets) ===
+    row = {
+        "timestamp": timestamp,
+        "op_date": op_date.isoformat(),
+        "op_time": op_time.strftime("%H:%M"),
+        "op_type": op_type,
+        "amputation_stage": amputation_stage,
+        "amputation_level": amputation_level,
+        "department": department,
+        "operating_room": operating_room,
+        "surgeon": surgeon,
+        "anesthesiologist": anesthesiologist,
+        "patient_name": patient_name,
+        "patient_dob": patient_dob.isoformat(),
+        "case_number": case_number,
+        "diagnosis": diagnosis,
+        "comorbidities": comorbidities,
+        "blood_loss": blood_loss,
+        "blood_needed": blood_needed,
+        "blood_components": blood_components,
+        "blood_group": blood_group,
+        "urgency": urgency,
+        "equipment": equipment,
+        "icu_needed": icu_needed,
+        "special_conditions": special_conditions,
+    }
 
-    sheet.append_row(row)
-
+    # === 2) Правила автоматичних сповіщень ===
     recipients = set()
 
-    # Автоматичні правила
+    # Правило: кров → трансфузіологія
     if blood_needed == "Так":
-        recipients.add(DEPARTMENTS_EMAILS["Трансфузіологія"])
+        recipients.add("Трансфузіологія")
 
+    # Правило: реанімація
     if icu_needed:
-        recipients.add(DEPARTMENTS_EMAILS["Реанімація"])
+        recipients.add("Реанімація")
 
+    # Правило: негайно → операційний блок + анестезіологія
     if urgency == "Негайно":
-        recipients.add(DEPARTMENTS_EMAILS["Операційний блок"])
-        recipients.add(DEPARTMENTS_EMAILS["Анестезіологія"])
+        recipients.add("Операційний блок")
+        recipients.add("Анестезіологія")
 
+    # Правило: ургентна → адміністрація
     if op_type == "Ургентна":
-        recipients.add(DEPARTMENTS_EMAILS["Адміністрація"])
+        recipients.add("Адміністрація")
 
-    # Ручні чекбокси
+    # === 3) Додаємо ручні чекбокси ===
     if notify_operblock:
-        recipients.add(DEPARTMENTS_EMAILS["Операційний блок"])
+        recipients.add("Операційний блок")
     if notify_anesth:
-        recipients.add(DEPARTMENTS_EMAILS["Анестезіологія"])
+        recipients.add("Анестезіологія")
     if notify_icu:
-        recipients.add(DEPARTMENTS_EMAILS["Реанімація"])
+        recipients.add("Реанімація")
     if notify_lab:
-        recipients.add(DEPARTMENTS_EMAILS["Лабораторія"])
+        recipients.add("Лабораторія")
     if notify_sterile:
-        recipients.add(DEPARTMENTS_EMAILS["Стерилізаційна"])
+        recipients.add("Стерилізаційна")
     if notify_admin:
-        recipients.add(DEPARTMENTS_EMAILS["Адміністрація"])
+        recipients.add("Адміністрація")
     if notify_bloodbank:
-        recipients.add(DEPARTMENTS_EMAILS["Трансфузіологія"])
+        recipients.add("Трансфузіологія")
 
-    email_subject = f"Операція ({op_type}) — {op_date} {op_time} — {amputation_level}"
+    recipients = sorted(list(recipients))
+
+    # === 4) Формуємо тему та тіло листа (як у продакшені) ===
+    email_subject = (
+        f"Операція ({op_type}) — {op_date} {op_time} — {amputation_level}"
+    )
+
     email_body = f"""
     Нова операція зареєстрована:
 
@@ -208,7 +218,19 @@ if submitted:
     Особливі умови: {special_conditions}
     """
 
-    if recipients:
-        send_email(email_subject, email_body, list(recipients))
+    # === 5) Вивід для ІТ (DEMO-результат) ===
+    st.success("✅ Форма прийнята (DEMO-режим)")
 
-    st.success("✅ Операцію збережено та повідомлення надіслані!")
+    st.subheader("📋 Дані, які були б збережені в Google Sheets")
+    st.json(row)
+
+    if recipients:
+        st.subheader("📨 Адресати (з урахуванням правил)")
+        st.write(recipients)
+
+        st.subheader("📧 Текст листа (DEMO)")
+        send_email_demo(email_subject, email_body, recipients)
+    else:
+        st.warning(
+            "⚠️ Жоден відділ не був автоматично чи вручну обраний для сповіщення."
+        )
