@@ -22,11 +22,11 @@ def send_email_demo(subject: str, body: str, recipients: list[str]):
 # ===========================
 
 st.set_page_config(
-    page_title="NotifyOR (DEMO)",
+    page_title="SuperHumans Surgery Notify (DEMO)",
     layout="centered"
 )
 
-st.title("🏥 NotifyOR — ДЕМО форма інформування про операцію")
+st.title("🏥 SuperHumans Surgery Notify — ДЕМО форма інформування про операцію")
 
 with st.form("operation_form"):
 
@@ -44,11 +44,11 @@ with st.form("operation_form"):
 
     amputation_level = st.selectbox(
         "Рівень ампутації",
-        ["Стегно", "Гомілка", "Плече", "Передпліччя"]
+        ["Стегно", "Гомілка", "Плече", "Передпліччя", "Пересадка шкіри"]
     )
 
     department = st.selectbox("Відділення", ["Хірургія", "Ортопедія"])
-    operating_room = st.selectbox("Операційна", ["№1", "№2", "№3"])
+    operating_room = st.selectbox("Операційна", ["№1", "№2"])
 
     surgeon = st.text_input("Хірург (ПІБ)")
     anesthesiologist = st.text_input("Анестезіолог (ПІБ)")
@@ -85,7 +85,7 @@ with st.form("operation_form"):
 
     urgency = st.selectbox(
         "Терміновість",
-        ["Планово", "Терміново", "Негайно"]
+        ["Планово", "Евакуація", "Негайно"]
     )
 
     # ---------- Блок D: Інші ресурси ----------
