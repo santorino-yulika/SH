@@ -8,9 +8,10 @@ from email.mime.multipart import MIMEMultipart
 # CONFIG
 # ===========================
 
-DEMO_MODE = False  # False = реально надсилаємо email
+DEMO_MODE = False  # False = реальна відправка email
 
-DEFAULT_RECEIVER = st.secrets["EMAIL_RECEIVERS"]
+# Всі відділи → один email (тимчасово)
+DEPARTMENT_EMAIL = st.secrets["EMAIL_RECEIVERS"]
 
 # ===========================
 # EMAIL SEND
@@ -53,15 +54,16 @@ def send_email_demo(subject: str, body: str, recipients: list[str]):
 # ===========================
 
 st.set_page_config(
-    page_title="SuperHumans Surgery Notify (DEMO)",
+    page_title="SuperHumans Surgery Notify",
     layout="centered"
 )
 
 st.title("🏥 SuperHumans Surgery Notify")
-st.caption("Демо-форма інформування про операцію")
+st.caption("Форма інформування про операцію")
 
 with st.form("operation_form"):
 
+    # ---------- ОПЕРАЦІЯ ----------
     st.subheader("🔹 Основні дані операції")
 
     op_date = st.date_input("Дата операції")
@@ -84,6 +86,7 @@ with st.form("operation_form"):
     surgeon = st.text_input("Хірург (ПІБ)")
     anesthesiologist = st.text_input("Анестезіолог (ПІБ)")
 
+    # ---------- ПАЦІЄНТ ----------
     st.subheader("🔹 Пацієнт")
 
     patient_name = st.text_input("ПІБ пацієнта")
@@ -91,6 +94,7 @@ with st.form("operation_form"):
     case_number = st.text_input("Номер історії хвороби")
     diagnosis = st.text_area("Діагноз")
 
+    # ---------- ТРАНСФУЗІОЛОГІЯ ----------
     st.subheader("🔹 Трансфузіологія")
 
     blood_loss = st.selectbox(
@@ -112,10 +116,22 @@ with st.form("operation_form"):
         ["Планово", "Евакуація", "Негайно"]
     )
 
-    st.subheader("🔹 Інше")
+    # ---------- ІНШЕ ----------
+    st.subheader("🔹 Інші ресурси")
 
     icu_needed = st.checkbox("Потрібна реанімація")
     special_conditions = st.text_area("Особливі умови")
+
+    # ---------- АДРЕСАТИ ----------
+    st.subheader("🔹 Кого сповістити")
+
+    notify_operblock = st.checkbox("Операційний блок")
+    notify_anesth = st.checkbox("Анестезіологія")
+    notify_icu = st.checkbox("Реанімація")
+    notify_lab = st.checkbox("Лабораторія")
+    notify_sterile = st.checkbox("Стерилізаційна")
+    notify_admin = st.checkbox("Адміністрація")
+    notify_bloodbank = st.checkbox("Трансфузіологія")
 
     submitted = st.form_submit_button("📩 Надіслати")
 
@@ -125,14 +141,47 @@ with st.form("operation_form"):
 
 if submitted:
 
-    recipients = [DEFAULT_RECEIVER]
+    notified_departments = set()
+
+    # ---- автоматичні правила ----
+    if blood_needed == "Так":
+        notified_departments.add("Трансфузіологія")
+
+    if icu_needed:
+        notified_departments.add("Реанімація")
+
+    if urgency == "Негайно":
+        notified_departments.update(["Операційний блок", "Анестезіологія"])
+
+    if op_type == "Ургентна":
+        notified_departments.add("Адміністрація")
+
+    # ---- ручний вибір ----
+    if notify_operblock:
+        notified_departments.add("Операційний блок")
+    if notify_anesth:
+        notified_departments.add("Анестезіологія")
+    if notify_icu:
+        notified_departments.add("Реанімація")
+    if notify_lab:
+        notified_departments.add("Лабораторія")
+    if notify_sterile:
+        notified_departments.add("Стерилізаційна")
+    if notify_admin:
+        notified_departments.add("Адміністрація")
+    if notify_bloodbank:
+        notified_departments.add("Трансфузіологія")
+
+    notified_departments = sorted(list(notified_departments))
+
+    recipients = [DEPARTMENT_EMAIL]
 
     email_subject = (
         f"Операція ({op_type}) — {op_date} {op_time} — {amputation_level}"
     )
 
     email_body = f"""
-Нова операція зареєстрована
+НОВА ОПЕРАЦІЯ
 
 Дата: {op_date}
 Час: {op_time}
@@ -158,6 +207,9 @@ if submitted:
 Терміновість: {urgency}
 Реанімація: {"Так" if icu_needed else "Ні"}
 
+СПОВІЩЕНІ ВІДДІЛИ:
+- {chr(10).join(notified_departments)}
+
 Особливі умови:
 {special_conditions}
 """
@@ -166,3 +218,6 @@ if submitted:
         send_email_demo(email_subject, email_body, recipients)
     else:
         send_email(email_subject, email_body, recipients)
+
+    st.subheader("📨 Сповіщені відділи")
+    st.write(notified_departments)
