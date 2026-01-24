@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 import smtplib
+import requests  # Додано для роботи з Green-API
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -8,13 +9,13 @@ from email.mime.multipart import MIMEMultipart
 # CONFIG
 # ===========================
 
-DEMO_MODE = False  # False = реальна відправка email
+DEMO_MODE = False  # False = реальна відправка email та WhatsApp
 
 # Всі відділи → один email (тимчасово)
 DEPARTMENT_EMAIL = st.secrets["EMAIL_RECEIVERS"]
 
 # ===========================
-# EMAIL SEND
+# NOTIFICATION FUNCTIONS
 # ===========================
 
 def send_email(subject: str, body: str, recipients: list[str]):
@@ -40,9 +41,33 @@ def send_email(subject: str, body: str, recipients: list[str]):
         st.error("❌ Помилка відправки email")
         st.exception(e)
 
+def send_whatsapp(body: str):
+    """Відправка повідомлення через Green-API"""
+    try:
+        id_instance = st.secrets["GREEN_API_ID"]
+        api_token = st.secrets["GREEN_API_TOKEN"]
+        chat_id = st.secrets["WHATSAPP_RECIPIENT"] # Наприклад: 380XXXXXXXXX@c.us
+
+        url = f"https://api.green-api.com/waInstance{id_instance}/sendMessage/{api_token}"
+        
+        payload = {
+            "chatId": chat_id,
+            "message": body
+        }
+        
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(url, json=payload, headers=headers)
+        
+        if response.status_code == 200:
+            st.success("✅ Повідомлення у WhatsApp надіслано")
+        else:
+            st.error(f"❌ Помилка WhatsApp API: {response.status_code}")
+    except Exception as e:
+        st.error("❌ Не вдалося надіслати WhatsApp")
+        st.exception(e)
 
 def send_email_demo(subject: str, body: str, recipients: list[str]):
-    st.info("📧 DEMO MODE — email не надсилається")
+    st.info("📧 DEMO MODE — повідомлення не надсилаються")
     st.json({
         "subject": subject,
         "recipients": recipients,
@@ -208,7 +233,7 @@ if submitted:
 Реанімація: {"Так" if icu_needed else "Ні"}
 
 СПОВІЩЕНІ ВІДДІЛИ:
-- {chr(10).join(notified_departments)}
+- {" ".join(notified_departments)}
 
 Особливі умови:
 {special_conditions}
@@ -217,7 +242,11 @@ if submitted:
     if DEMO_MODE:
         send_email_demo(email_subject, email_body, recipients)
     else:
+        # Відправка Email
         send_email(email_subject, email_body, recipients)
+        # Відправка WhatsApp (додано)
+        whatsapp_text = f"🚨 *{email_subject}*\n{email_body}"
+        send_whatsapp(whatsapp_text)
 
     st.subheader("📨 Сповіщені відділи")
-    st.write(notified_departments)
+    st.write(", ".join(notified_departments))
