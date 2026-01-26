@@ -151,10 +151,10 @@ with st.form("operation_form"):
     st.subheader("🔹 Кого сповістити")
 
     notify_operblock = st.checkbox("Операційний блок")
-    notify_anesth = st.checkbox("Анестезіологія")
-    notify_icu = st.checkbox("Реанімація")
-    notify_lab = st.checkbox("Лабораторія")
-    notify_sterile = st.checkbox("Стерилізаційна")
+    # notify_anesth = st.checkbox("Анестезіологія")
+    # notify_icu = st.checkbox("Реанімація")
+    # notify_lab = st.checkbox("Лабораторія")
+    # notify_sterile = st.checkbox("Стерилізаційна")
     notify_admin = st.checkbox("Адміністрація")
     notify_bloodbank = st.checkbox("Трансфузіологія")
 
